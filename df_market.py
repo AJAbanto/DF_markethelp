@@ -54,7 +54,7 @@ print('Appending Info to Google sheets\n')
 
 #accessing APIs
 scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name('df_mp2_logger.json',scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name('api_keys/df_mp2_logger.json',scope)
 
 #authorizing
 client = gspread.authorize(creds) 
