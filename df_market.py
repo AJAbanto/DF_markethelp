@@ -2,85 +2,90 @@ import re
 import gspread
 import datetime
 from datetime import datetime
-import ntplib
+from datetime import timedelta
 
+import ntplib
+import time
 from oauth2client.service_account import ServiceAccountCredentials
 from robobrowser import RoboBrowser
 
 
 print('starting up..')
+while True:
+	#open browser
+	browser = RoboBrowser(parser='lxml') #parser set to lxml as recommended to supress warnings
+	browser.open('http://www.hollowprestige.com/explore/marketplace/')
 
-#open browser
-browser = RoboBrowser(parser='lxml') #parser set to lxml as recommended to supress warnings
-browser.open('http://www.hollowprestige.com/explore/marketplace/')
+	#get search form to submit
+	srch_frm = browser.get_form(action='/explore/marketplace/')
+	srch_frm['TradeZone'].value = 'Secronom Bunker'
+	srch_frm['Category'].value ='Ammo - Rifle'
+	srch_frm['Search'].value = '12.7mm'
 
-#get search form to submit
-srch_frm = browser.get_form(action='/explore/marketplace/')
-srch_frm['TradeZone'].value = 'Secronom Bunker'
-srch_frm['Category'].value ='Ammo - Rifle'
-srch_frm['Search'].value = '12.7mm'
-
-browser.submit_form(srch_frm)
-
-
-#get output html
-html = str(browser.parsed())
-
-html_f = open('html_out.html','w')
-html_f.write(html)
-html_f.close()
+	browser.submit_form(srch_frm)
 
 
-#Get list of data (contaminated)
-result = re.findall(r'e">(.*?)</td>',html)
-#print(result)
+	#get output html
+	html = str(browser.parsed())
+
+	html_f = open('html_out.html','w')
+	html_f.write(html)
+	html_f.close()
 
 
-#Filter results
-clean_result =[i for i in result if (i != ("Secronom")) if (i!= "12.7mm Rifle Bullets")]
-#print(clean_result)
+	#Get list of data (contaminated)
+	result = re.findall(r'e">(.*?)</td>',html)
+	#print(result)
 
 
-#get lower bound average
-#Note relatively unsure if all boxes in lowerbound are fullboxes)
-ave = 0
-
-for i in range(5):
-	ave +=int(clean_result[i].replace(',',''))
-ave *= 1/5
-ave = int(ave) #This is average price of the 5 cheapest items on MP
+	#Filter results
+	clean_result =[i for i in result if (i != ("Secronom")) if (i!= "12.7mm Rifle Bullets")]
+	#print(clean_result)
 
 
-#Logging data into google sheets
-#print('Appending Info to Google sheets\n')
+	#get lower bound average
+	#Note relatively unsure if all boxes in lowerbound are fullboxes)
+	ave = 0
 
-#accessing APIs
-scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name('api_keys/df_mp2_logger.json',scope)
+	for i in range(5):
+		ave +=int(clean_result[i].replace(',',''))
+	ave *= 1/5
+	ave = int(ave) #This is average price of the 5 cheapest items on MP
 
-#authorizing
-client = gspread.authorize(creds) 
 
-#accessing sheets
-sheet = client.open('Deadfrontier_Market_analysis').worksheet('12.7mm Ammo')
+	#Logging data into google sheets
+	#print('Appending Info to Google sheets\n')
 
-#preparing data (Time stamp)
+	#accessing APIs
+	scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+	creds = ServiceAccountCredentials.from_json_keyfile_name('api_keys/df_mp2_logger.json',scope)
 
-#connecting to ntp server 
-c = ntplib.NTPClient()
-rep = c.request('ph.pool.ntp.org',version=3) #sending request to server
-rep.offset
-time_stamp = datetime.fromtimestamp(rep.tx_time) 
+	#authorizing
+	client = gspread.authorize(creds) 
 
-date = time_stamp.strftime('%m/%d/%Y')	#formatting timestamp
-time = time_stamp.strftime('%I:%M %p')
-Lbound_price = ave	#lowerbound price average
+	#accessing sheets
+	sheet = client.open('Deadfrontier_Market_analysis').worksheet('12.7mm Ammo')
 
-new_row =[date, time ,Lbound_price]
-print('New Data: ',new_row)
-sheet.insert_row(new_row)
-print('Done')
+	#preparing data (Time stamp)
 
+	#connecting to ntp server 
+	c = ntplib.NTPClient()
+	rep = c.request('ph.pool.ntp.org',version=3) #sending request to server
+	rep.offset
+	time_stamp = datetime.fromtimestamp(rep.tx_time) # + timedelta(hours=8) add hour offset if timezone is wrong 
+
+	date_now = time_stamp.strftime('%m/%d/%Y')	#formatting timestamp
+	time_now = time_stamp.strftime('%I:%M %p')
+	Lbound_price = ave	#lowerbound price average
+
+	new_row =[date_now, time_now ,Lbound_price]
+	print('New Data: ',new_row)
+	sheet.insert_row(new_row)
+	print('Cycle Done')
+	
+	#sleep for 30mins
+	for i in range(2):
+		time.sleep(60)
 
 
 
