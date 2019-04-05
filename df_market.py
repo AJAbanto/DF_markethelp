@@ -1,6 +1,8 @@
 import re
 import gspread
 import datetime
+from datetime import datetime
+import ntplib
 
 from oauth2client.service_account import ServiceAccountCredentials
 from robobrowser import RoboBrowser
@@ -9,7 +11,7 @@ from robobrowser import RoboBrowser
 print('starting up..')
 
 #open browser
-browser = RoboBrowser()
+browser = RoboBrowser(parser='lxml') #parser set to lxml as recommended to supress warnings
 browser.open('http://www.hollowprestige.com/explore/marketplace/')
 
 #get search form to submit
@@ -50,7 +52,7 @@ ave = int(ave) #This is average price of the 5 cheapest items on MP
 
 
 #Logging data into google sheets
-print('Appending Info to Google sheets\n')
+#print('Appending Info to Google sheets\n')
 
 #accessing APIs
 scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
@@ -63,15 +65,21 @@ client = gspread.authorize(creds)
 sheet = client.open('Deadfrontier_Market_analysis').worksheet('12.7mm Ammo')
 
 #preparing data (Time stamp)
-time_stamp = datetime.datetime.now() #timestamp
+
+#connecting to ntp server 
+c = ntplib.NTPClient()
+rep = c.request('ph.pool.ntp.org',version=3) #sending request to server
+rep.offset
+time_stamp = datetime.fromtimestamp(rep.tx_time) 
+
 date = time_stamp.strftime('%m/%d/%Y')	#formatting timestamp
 time = time_stamp.strftime('%I:%M %p')
 Lbound_price = ave	#lowerbound price average
 
 new_row =[date, time ,Lbound_price]
-#print(new_row)
+print('New Data: ',new_row)
 sheet.insert_row(new_row)
-
+print('Done')
 
 
 
