@@ -67,24 +67,29 @@ while True:
 	sheet = client.open('Deadfrontier_Market_analysis').worksheet('12.7mm Ammo')
 
 	#preparing data (Time stamp)
+	
+	try:
+		#connecting to ntp server 
+		c = ntplib.NTPClient()
+		rep = c.request('ph.pool.ntp.org',version=3) #sending request to server
+		rep.offset
+		time_stamp = datetime.fromtimestamp(rep.tx_time) # + timedelta(hours=8) add hour offset if timezone is wrong 
 
-	#connecting to ntp server 
-	c = ntplib.NTPClient()
-	rep = c.request('ph.pool.ntp.org',version=3) #sending request to server
-	rep.offset
-	time_stamp = datetime.fromtimestamp(rep.tx_time) # + timedelta(hours=8) add hour offset if timezone is wrong 
+		date_now = time_stamp.strftime('%m/%d/%Y')	#formatting timestamp
+		time_now = time_stamp.strftime('%I:%M %p')
 
-	date_now = time_stamp.strftime('%m/%d/%Y')	#formatting timestamp
-	time_now = time_stamp.strftime('%I:%M %p')
+	except:
+		date_now = 'Server time_out'
+		time_now = 'Server time_out'
+			
 	Lbound_price = ave	#lowerbound price average
-
 	new_row =[date_now, time_now ,Lbound_price]
 	print('New Data: ',new_row)
 	sheet.insert_row(new_row)
 	print('Cycle Done')
 	
-	#sleep for 30mins
-	for i in range(2):
+	#sleep for 10mins
+	for i in range(10):
 		time.sleep(60)
 
 
